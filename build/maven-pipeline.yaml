@@ -1,0 +1,115 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: openshift-handson-apps-build
+  namespace: handson-demo
+spec:
+  params:
+    - name: git-app-url
+      description: applicationのリポジトリURL
+    - name: git-manifests-url
+      description: manifestファイルのリポジトリURL
+    - name: image-registry
+    - name: git-revision
+      default: HEAD
+  workspaces:
+    - name: local-source
+    - name: maven-settings
+  tasks:
+    # ソースコードをcloneする
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+        - name: output
+          workspace: local-source
+      params:
+        - name: url
+          value: $(params.git-app-url)
+        - name: revision
+          value: $(params.git-revision)
+        - name: deleteExisting
+          value: "true"
+    # イメージタグをgitのコミット情報より生成する
+    - name: make-imagetag
+      taskRef:
+        name: get-githash
+      runAfter: ["fetch-repository"]
+      workspaces:
+        - name: source
+          workspace: local-source
+    # ビルドする
+    - name: build
+      taskRef:
+        name: maven
+      runAfter: ["make-imagetag"]
+      params:
+        - name: GOALS
+          value: ["clean", "package"]
+      workspaces:
+        - name: source
+          workspace: local-source
+        - name: maven-settings
+          workspace: maven-settings
+    # インテグレーションテストの実行、カバレッジレポートの出力を行う
+    - name: int-test
+      taskRef:
+        name: maven
+      runAfter: ["build"]
+      params:
+        - name: GOALS
+          value: ["verify"]
+      workspaces:
+        - name: source
+          workspace: local-source
+        - name: maven-settings
+          workspace: maven-settings
+    # javadocなどドキュメントを出力する
+    - name: gen-report
+      taskRef:
+        name: maven
+      runAfter: ["build"]
+      # TODO: ドキュメントの出力作業が重いので、実行された体にする
+      params:
+        - name: GOALS
+          value: ["validate"]
+      workspaces:
+        - name: source
+          workspace: local-source
+        - name: maven-settings
+          workspace: maven-settings
+    # コンテナをビルド、出力する
+    - name: push-container
+      taskRef:
+        name: kaniko
+      workspaces:
+        - name: source
+          workspace: local-source
+      runAfter: ["int-test", "gen-report"]
+      params:
+        - name: DOCKERFILE
+          value: src/main/docker/Dockerfile.jvm
+        - name: IMAGE
+          value: "$(params.image-registry):$(tasks.make-imagetag.results.git-hash)"
+        - name: EXTRA_ARGS
+          value:
+            # TLS証明書に関するチェックを全て飛ばす
+            - --insecure-registry
+            - --insecure
+            - --insecure-pull
+            - --skip-tls-verify-registry
+            - --skip-tls-verify
+            - --skip-tls-verify-pull
+    # manifestファイルを更新する
+    - name: update-manifest-repository
+      taskRef:
+        name: update-manifests-for-gitops
+      workspaces:
+        - name: source
+          workspace: local-source
+      runAfter: ["push-container"]
+      params:
+        - name: GITOPS_REPO
+          value: $(params.git-manifests-url)
+        - name: IMAGE_URL
+          value: "$(params.image-registry):$(tasks.make-imagetag.results.git-hash)"

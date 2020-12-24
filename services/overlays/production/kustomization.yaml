@@ -1,0 +1,31 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: handson-demo
+
+commonLabels:
+  usage: handson
+
+configMapGenerator:
+- literals:
+  - POSTGRESQL_SERVICE_HOST=database-svc
+  - POSTGRESQL_SERVICE_PORT=5432
+  - POSTGRES_DB=address
+  name: app-config
+- literals:
+  - EXTERNAL_ADDRESS_SEARCH_ENABLE=true
+  name: viewmap-config
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+images:
+- name: quay.io/soharaki/addresscode-app
+  newTag: 20201125-2d7aa5d
+- name: quay.io/soharaki/addresscode-database
+  newTag: v0.0.1
+- name: quay.io/soharaki/viewmap
+  newTag: v0.0.5
+
+resources:
+- ../../base

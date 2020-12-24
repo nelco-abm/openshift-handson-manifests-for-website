@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: handsondemo-viewmap-monitor
+    name: handsondemo-viewmap-monitor
+  name: handsondemo-viewmap-monitor
+  namespace: handson-demo
+spec:
+  endpoints:
+    - interval: 5s
+      port: nginx-exporter
+      scheme: http
+  # handson-demo アプリケーションをスクレイピング対象にする
+  selector:
+    matchLabels:
+      app: viewmap

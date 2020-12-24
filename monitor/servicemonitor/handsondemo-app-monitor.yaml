@@ -1,0 +1,17 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    k8s-app: handsondemo-app-monitor
+    name: handsondemo-app-monitor
+  name: handsondemo-app-monitor
+  namespace: handson-demo
+spec:
+  endpoints:
+    - interval: 5s
+      port: app-port
+      scheme: http
+  # handson-demo アプリケーションをスクレイピング対象にする
+  selector:
+    matchLabels:
+      app: app

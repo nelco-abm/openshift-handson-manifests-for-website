@@ -1,0 +1,19 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: get-githash
+spec:
+  results:
+    - name: git-hash
+      description: the hash of git's last commit
+  steps:
+    - name: get-githash
+      workingDir: $(workspaces.source.path)
+      image: gcr.io/tekton-releases/github.com/tektoncd/pipeline/cmd/git-init:v0.12.1
+      script: |
+        commit=$(git log --pretty=format:'%h' -n 1  | tr -d '\n');
+        date=$(date '+%Y%m%d');
+        echo -n $date-$commit | tee $(results.git-hash.path)
+  workspaces:
+    - name: source
+      description: Location of source code

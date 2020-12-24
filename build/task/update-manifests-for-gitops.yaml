@@ -1,0 +1,65 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: update-manifests-for-gitops
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/pipelines.minVersion: "0.12.1"
+    tekton.dev/tags: git
+    tekton.dev/displayName: "git clone"
+spec:
+  description: >-
+    このタスクはGitOpsのために、マニフェストファイルリポジトリのリソースファイルを
+    指定されたタグ名で更新します。
+
+  workspaces:
+    - name: source
+      description: Location of gitops source code
+  params:
+    - name: GITOPS_REPO
+      description: The location of the repo to be updated
+      type: string
+    - name: IMAGE_URL
+      description: The container repository url + tag name
+      type: string
+    - name: GIT_EMAIL
+      description: The git email address
+      type: string
+      default: "tekton@nissho-ele.co.jp"
+    - name: GIT_USERNAME
+      description: The git username
+      type: string
+      default: "tekton"
+
+  steps:
+    - name: gitops-step
+      image: quay.io/soharaki/helm-kubectl-oc-wrap-curl-git-jq-yq-kustomize:1.18.7-3.3.0-3.3.2-3.8.1
+      workingDir: /workspace/source
+      command: ["/bin/bash", "-c"]
+      args:
+        - |-
+          set -e
+
+          # タグ情報
+          echo $(inputs.params.IMAGE_URL)
+
+          # git cloneでmanifestのソースコードをチェックアウトする
+          git config --global user.email $(inputs.params.GIT_EMAIL)
+          git config --global user.name $(inputs.params.GIT_USERNAME)
+
+          git clone -b master $(inputs.params.GITOPS_REPO) gitops
+
+          # ソースコードをコミットする
+          cd gitops/services/overlays/production
+          kustomize edit set image $(inputs.params.IMAGE_URL)
+          if git status --porcelain | grep services/overlays/production; then
+            # Changes
+            echo "any tag changed";
+            git add -u;
+            git commit -m "Updating image tag name "$(inputs.params.IMAGE_URL);
+            git push;
+          else
+            # No changes
+            echo "nothing to commit";
+          fi

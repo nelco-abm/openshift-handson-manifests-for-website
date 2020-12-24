@@ -1,0 +1,64 @@
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: github-pr-binding
+spec:
+  params:
+    - name: branch_name
+      value: $(body.ref)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: github-template
+spec:
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1alpha1
+      kind: PipelineRun
+      metadata:
+        generateName: openshift-handson-apps-build-run-
+        namespace: handson-demo
+      spec:
+        serviceAccountName: build-bot
+        pipelineRef:
+          name: openshift-handson-apps-build
+        params:
+          - name: git-app-url
+            value: https://github.com/nelco-abm/openshift-handson-apps-addresscode.git
+          - name: git-manifests-url
+            value: https://github.com/nelco-abm/openshift-handson-manifests-for-website.git
+          - name: image-registry
+            value: quay.io/soharaki/addresscode-app
+        workspaces:
+          - name: local-source
+            persistentVolumeClaim:
+              claimName: maven-repo-pvc
+          - name: maven-settings
+            persistentVolumeClaim:
+              claimName: maven-repo-pvc2
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: github-listener-interceptor
+spec:
+  serviceAccountName: tekton-triggers-github-sa
+  triggers:
+    - name: github-listener
+      interceptors:
+        - github:
+            # 今回は誰からでも実行可能にする。本来はGitHubWebHookを利用した制御を...
+            #            secretRef:
+            #              secretName: github-sec-webhook
+            #              secretKey: secretToken
+            eventTypes:
+              - push
+        # 本ハンズオンの単純化のため、master/mainにpushしたらEventListerが反応するようにする
+        # 本来はブランチプロテクトをかけて、master/mainはPR、レビューによってのみマージできるようにすべき
+        - cel:
+            filter: "body.ref in ['refs/heads/master','refs/heads/main']"
+      bindings:
+        - name: github-pr-binding
+      template:
+        name: github-template

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: handsondemo-app-alert
+  namespace: handson-demo
+spec:
+  groups:
+    - name: app-alert
+      rules:
+        - alert: ExcessiveUsage
+          expr: histogram_quantile(0.95, sum(rate(m__address_postalcode__param__GET_seconds_bucket[30s])) by (le)) > 1
+          for: 5s
+          labels:
+            severity: "critical"
+            usage: handson
+            namespace: handson-demo
+          annotations:
+            summary: "95%のリクエストが返るまでに1秒以上かかってます。このままではサービスレベルを維持できません。"

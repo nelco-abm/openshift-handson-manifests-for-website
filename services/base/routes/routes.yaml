@@ -1,0 +1,40 @@
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+  labels:
+    app.kubernetes.io/instance: handson-demo-apps
+    usage: handson
+  name: viewmap-route
+  namespace: handson-demo
+spec:
+  host: viewmap-handson-demo.apps.sor-cluster.ndap-nelco.net
+  port:
+    targetPort: "80"
+  to:
+    kind: Service
+    name: viewmap-svc
+    weight: 100
+  wildcardPolicy: None
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  annotations:
+    openshift.io/host.generated: "true"
+  labels:
+    app.kubernetes.io/instance: handson-demo-apps
+    usage: handson
+  name: addresscode-search-route
+  namespace: handson-demo
+spec:
+  host: addresscode-search-handson-demo.apps.sor-cluster.ndap-nelco.net
+  port:
+    targetPort: "8080"
+  to:
+    kind: Service
+    name: app-svc
+    weight: 100
+  wildcardPolicy: None

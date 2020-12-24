@@ -1,0 +1,17 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: handson-demo-apps
+  namespace: handson-demo
+spec:
+  destination:
+    namespace: handson-demo
+    server: https://kubernetes.default.svc
+  project: handson-demo
+  source:
+    path: services/overlays/production
+    repoURL: git@github.com:nelco-abm/openshift-handson-manifests-for-website.git
+    targetRevision: HEAD
+  syncPolicy:
+    automated:
+      prune: true

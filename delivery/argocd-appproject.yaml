@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: handson-demo
+spec:
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  destinations:
+    - namespace: "*"
+      server: "*"
+  sourceRepos:
+    - "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: handson-demo
+  namespace: handson-demo
+spec:
+  description: handson-demo
+  destinations:
+    - namespace: handson-demo
+      server: "*"
+    - namespace: handson-demo
+      server: https://kubernetes.default.svc
+  sourceRepos:
+    - git@github.com:nelco-abm/openshift-handson-manifests-for-website.git
